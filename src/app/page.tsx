@@ -1,5 +1,5 @@
 "use client"; // Add this line to make it a client component
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ClientMap from "@/component/ClientMap";
 import { Input } from "@/component/components/ui/input";
 import { Button } from "@/component/components/ui/button";
@@ -12,6 +12,28 @@ export default function Home() {
   const [responseMessage, setResponseMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [coordinates, setCoordinates] = useState<[number, number] | null>(null);
+  
+  // Function to get the current location
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setCoordinates([latitude, longitude]);
+        },
+        (error) => {
+          console.error("Error getting current location:", error);
+          // Optionally handle the error (e.g., show a message to the user)
+        }
+      );
+    } else {
+      console.error("Geolocation is not supported by this browser.");
+    }
+  };
+
+  useEffect(() => {
+    getCurrentLocation(); // Get the user's current location when the component mounts
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -23,9 +45,24 @@ export default function Home() {
     setIsLoading(true);
     
     try {
-      // Geocoding: Get coordinates from LocationIQ
       const locationIQKey = process.env.NEXT_PUBLIC_LOCATIONIQ_KEY; // Replace with your actual API key
-      const geocodeUrl = `https://us1.locationiq.com/v1/search.php?key=${locationIQKey}&q=${encodeURIComponent(searchQuery)}&format=json`;
+
+      // Check if the query is likely a location request
+      const isLocationQuery = searchQuery.toLowerCase().includes("location of") || searchQuery.toLowerCase().includes("where is");
+
+      let landmark = searchQuery; // Default to the search query
+
+      if (isLocationQuery) {
+        // Use GenAI to extract the landmark
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        const prompt = `Extract the landmark from the following query: "${searchQuery}".`;
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        landmark = response.text().trim(); // Get the extracted landmark
+      }
+
+      // Geocoding: Get coordinates from LocationIQ
+      const geocodeUrl = `https://us1.locationiq.com/v1/search.php?key=${locationIQKey}&q=${encodeURIComponent(landmark)}&format=json`;
       
       const geocodeResponse = await axios.get(geocodeUrl);
       if (geocodeResponse.data.length > 0) {
