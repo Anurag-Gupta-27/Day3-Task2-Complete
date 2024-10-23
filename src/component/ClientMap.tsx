@@ -1,18 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// Fix for default marker icon
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// Define the prop types for ClientMap
+interface ClientMapProps {
+  coordinates: [number, number] | null;
+}
 
+// Set up the custom icon using CDN URLs
 const customIcon = new L.Icon({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -23,23 +21,19 @@ const customIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-interface ClientMapProps {
-  coordinates: [number, number] | null;
-}
-
-function MapUpdater({ coordinates }: ClientMapProps) {
+function MapUpdater({ coordinates }: { coordinates: [number, number] | null }) {
   const map = useMap();
 
   useEffect(() => {
     if (coordinates) {
-      map.setView(coordinates, 13);
+      map.setView(coordinates, map.getZoom());
     }
   }, [coordinates, map]);
 
-  return coordinates ? <Marker position={coordinates} icon={customIcon} /> : null;
+  return null;
 }
 
-export default function ClientMap({ coordinates }: ClientMapProps) {
+const ClientMap: React.FC<ClientMapProps> = ({ coordinates }) => {
   const [mapCenter, setMapCenter] = useState<[number, number]>([51.505, -0.09]);
 
   useEffect(() => {
@@ -49,12 +43,21 @@ export default function ClientMap({ coordinates }: ClientMapProps) {
   }, [coordinates]);
 
   return (
-    <MapContainer center={mapCenter} zoom={13} style={{ height: '100vh', width: '100%' }}>
+    <MapContainer center={mapCenter} zoom={13} style={{ height: "100%", width: "100%" }}>
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
       <MapUpdater coordinates={coordinates} />
+      {coordinates && (
+        <Marker position={coordinates} icon={customIcon}>
+          <Popup>
+            <span>Coordinates: {coordinates[0]}, {coordinates[1]}</span>
+          </Popup>
+        </Marker>
+      )}
     </MapContainer>
   );
-}
+};
+
+export default ClientMap;

@@ -4,11 +4,12 @@ import ClientMap from "@/component/ClientMap";
 import { Input } from "@/component/components/ui/input";
 import { Button } from "@/component/components/ui/button";
 import { Search } from "lucide-react";
-import { genAI } from "@/utils/geminiconfig";
+import axios from "axios"; // Import Axios
+import { genAI } from "utils/geminiconfig";
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [geminiResponse, setGeminiResponse] = useState("");
+  const [responseMessage, setResponseMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [coordinates, setCoordinates] = useState<[number, number] | null>(null);
 
@@ -20,24 +21,25 @@ export default function Home() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
+    
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-      const prompt = `Generate coordinates of the location: ${searchQuery}. Return only the numbers separated by a comma.`;
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-
-      const [lat, lng] = text.split(",").map(Number);
-      if (!isNaN(lat) && !isNaN(lng)) {
-        setCoordinates([lat, lng]);
-        setGeminiResponse(`Coordinates: ${lat}, ${lng}`);
+      // Geocoding: Get coordinates from LocationIQ
+      const locationIQKey = process.env.NEXT_PUBLIC_LOCATIONIQ_KEY; // Replace with your actual API key
+      const geocodeUrl = `https://us1.locationiq.com/v1/search.php?key=${locationIQKey}&q=${encodeURIComponent(searchQuery)}&format=json`;
+      
+      const geocodeResponse = await axios.get(geocodeUrl);
+      if (geocodeResponse.data.length > 0) {
+        const { lat, lon, display_name } = geocodeResponse.data[0];
+        const latitude = parseFloat(lat);
+        const longitude = parseFloat(lon);
+        setCoordinates([latitude, longitude]);
+        setResponseMessage(`Coordinates: ${latitude}, ${longitude}. Address: ${display_name}`);
       } else {
-        throw new Error("Invalid coordinates received");
+        throw new Error("Location not found");
       }
     } catch (error) {
-      console.error("Error fetching data from Gemini:", error);
-      setGeminiResponse("An error occurred while fetching data.");
+      console.error("Error fetching data:", error);
+      setResponseMessage("An error occurred while fetching data.");
       setCoordinates(null);
     } finally {
       setIsLoading(false);
@@ -46,7 +48,7 @@ export default function Home() {
 
   return (
     <div className="h-screen w-full relative">
-      <ClientMap coordinates={coordinates} />
+      <ClientMap coordinates={coordinates} /> {/* Pass coordinates to ClientMap */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[9999] w-[400px]">
         <form onSubmit={handleSearch} className="flex shadow-lg overflow-hidden bg-white rounded-lg w-full">
           <Input 
@@ -70,10 +72,10 @@ export default function Home() {
           Loading...
         </div>
       )}
-      {geminiResponse && (
+      {responseMessage && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[9999] w-[400px] bg-white p-4 rounded-lg shadow-lg">
-          <h2 className="text-lg font-bold mb-2">Gemini Response:</h2>
-          <p>{geminiResponse}</p>
+          <h2 className="text-lg font-bold mb-2">Response:</h2>
+          <p>{responseMessage}</p>
         </div>
       )}
     </div>
