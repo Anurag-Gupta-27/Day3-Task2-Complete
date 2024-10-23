@@ -1,9 +1,9 @@
-import Image from "next/image";
+import ClientMap from '../component/ClientMap';
 
 export default function Home() {
   return (
-    <div className="flex items-center justify-center h-screen">
-      <h1>Hello World</h1>
+    <div style={{ height: '100vh', width: '100%' }}>
+      <ClientMap />
     </div>
   );
 }
