@@ -23,7 +23,7 @@ export default function Home() {
 
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-      const prompt = `Provide latitude and longitude about the location: ${searchQuery}. Return only the numbers separated by a comma.`;
+      const prompt = `Generate coordinates of the location: ${searchQuery}. Return only the numbers separated by a comma.`;
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
